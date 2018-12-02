@@ -398,28 +398,40 @@ static int init_input(AVFormatContext *s, const char *filename,
     AVProbeData pd = { filename, NULL, 0 };
     int score = AVPROBE_SCORE_RETRY;
 
+    av_log(NULL, AV_LOG_DEBUG, "init_input_1");
     if (s->pb) {
         s->flags |= AVFMT_FLAG_CUSTOM_IO;
-        if (!s->iformat)
-            return av_probe_input_buffer2(s->pb, &s->iformat, filename,
+        if (!s->iformat) {
+            ret = av_probe_input_buffer2(s->pb, &s->iformat, filename,
                                          s, 0, s->format_probesize);
-        else if (s->iformat->flags & AVFMT_NOFILE)
+            av_log(NULL, AV_LOG_DEBUG, "init_input_2 ret:%d", ret);
+            return ret;
+        } else if (s->iformat->flags & AVFMT_NOFILE) {
             av_log(s, AV_LOG_WARNING, "Custom AVIOContext makes no sense and "
                                       "will be ignored with AVFMT_NOFILE format.\n");
+        }
         return 0;
     }
 
     if ((s->iformat && s->iformat->flags & AVFMT_NOFILE) ||
-        (!s->iformat && (s->iformat = av_probe_input_format2(&pd, 0, &score))))
+        (!s->iformat && (s->iformat = av_probe_input_format2(&pd, 0, &score)))) {
+        av_log(NULL, AV_LOG_DEBUG, "init_input_3 ret:%d", score);
         return score;
+    }
 
-    if ((ret = s->io_open(s, &s->pb, filename, AVIO_FLAG_READ | s->avio_flags, options)) < 0)
+    if ((ret = s->io_open(s, &s->pb, filename, AVIO_FLAG_READ | s->avio_flags, options)) < 0) {
+        av_log(NULL, AV_LOG_DEBUG, "init_input_4 ret:%d", ret);
         return ret;
+    }
 
-    if (s->iformat)
+    if (s->iformat) {
+        av_log(NULL, AV_LOG_DEBUG, "init_input_5 ret:%d", ret);
         return 0;
-    return av_probe_input_buffer2(s->pb, &s->iformat, filename,
+    }
+    ret = av_probe_input_buffer2(s->pb, &s->iformat, filename,
                                  s, 0, s->format_probesize);
+    av_log(NULL, AV_LOG_DEBUG, "init_input_6 ret:%d", ret);
+    return ret;
 }
 
 static int add_to_pktbuf(AVPacketList **packet_buffer, AVPacket *pkt,
@@ -521,6 +533,7 @@ int avformat_open_input(AVFormatContext **ps, const char *filename,
         av_log(NULL, AV_LOG_ERROR, "Input context has not been properly allocated by avformat_alloc_context() and is not NULL either\n");
         return AVERROR(EINVAL);
     }
+    av_log(NULL, AV_LOG_DEBUG, "avformat_open_input_1");
     if (fmt)
         s->iformat = fmt;
 
@@ -530,13 +543,23 @@ int avformat_open_input(AVFormatContext **ps, const char *filename,
     if (s->pb) // must be before any goto fail
         s->flags |= AVFMT_FLAG_CUSTOM_IO;
 
-    if ((ret = av_opt_set_dict(s, &tmp)) < 0)
+
+    if ((ret = av_opt_set_dict(s, &tmp)) < 0) {
+        av_log(NULL, AV_LOG_DEBUG, "avformat_open_input_1_1");
         goto fail;
+    }
+
+
+    av_log(NULL, AV_LOG_DEBUG, "avformat_open_input_2");
 
     av_strlcpy(s->filename, filename ? filename : "", sizeof(s->filename));
-    if ((ret = init_input(s, filename, &tmp)) < 0)
+    if ((ret = init_input(s, filename, &tmp)) < 0) {
+        av_log(NULL, AV_LOG_DEBUG, "avformat_open_input_2_1");
         goto fail;
+    }
     s->probe_score = ret;
+
+    av_log(NULL, AV_LOG_DEBUG, "avformat_open_input_3");
 
     if (!s->protocol_whitelist && s->pb && s->pb->protocol_whitelist) {
         s->protocol_whitelist = av_strdup(s->pb->protocol_whitelist);
@@ -546,6 +569,8 @@ int avformat_open_input(AVFormatContext **ps, const char *filename,
         }
     }
 
+    av_log(NULL, AV_LOG_DEBUG, "avformat_open_input_4");
+
     if (!s->protocol_blacklist && s->pb && s->pb->protocol_blacklist) {
         s->protocol_blacklist = av_strdup(s->pb->protocol_blacklist);
         if (!s->protocol_blacklist) {
@@ -554,11 +579,16 @@ int avformat_open_input(AVFormatContext **ps, const char *filename,
         }
     }
 
+
+    av_log(NULL, AV_LOG_DEBUG, "avformat_open_input_5");
+
     if (s->format_whitelist && av_match_list(s->iformat->name, s->format_whitelist, ',') <= 0) {
         av_log(s, AV_LOG_ERROR, "Format not on whitelist \'%s\'\n", s->format_whitelist);
         ret = AVERROR(EINVAL);
         goto fail;
     }
+
+    av_log(NULL, AV_LOG_DEBUG, "avformat_open_input_6");
 
     avio_skip(s->pb, s->skip_initial_bytes);
 
@@ -569,6 +599,8 @@ int avformat_open_input(AVFormatContext **ps, const char *filename,
             goto fail;
         }
     }
+
+    av_log(NULL, AV_LOG_DEBUG, "avformat_open_input_7");
 
     s->duration = s->start_time = AV_NOPTS_VALUE;
 
@@ -586,6 +618,8 @@ int avformat_open_input(AVFormatContext **ps, const char *filename,
         }
     }
 
+    av_log(NULL, AV_LOG_DEBUG, "avformat_open_input_8");
+
     /* e.g. AVFMT_NOFILE formats will not have a AVIOContext */
     if (s->pb)
         ff_id3v2_read_dict(s->pb, &s->internal->id3v2_meta, ID3v2_DEFAULT_MAGIC, &id3v2_extra_meta);
@@ -594,6 +628,8 @@ int avformat_open_input(AVFormatContext **ps, const char *filename,
     if (!(s->flags&AVFMT_FLAG_PRIV_OPT) && s->iformat->read_header)
         if ((ret = s->iformat->read_header(s)) < 0)
             goto fail;
+
+    av_log(NULL, AV_LOG_DEBUG, "avformat_open_input_9");
 
     if (!s->metadata) {
         s->metadata = s->internal->id3v2_meta;
@@ -608,6 +644,8 @@ int avformat_open_input(AVFormatContext **ps, const char *filename,
             return AVERROR_INVALIDDATA;
     }
 
+    av_log(NULL, AV_LOG_DEBUG, "avformat_open_input_10");
+
     if (id3v2_extra_meta) {
         if (!strcmp(s->iformat->name, "mp3") || !strcmp(s->iformat->name, "aac") ||
             !strcmp(s->iformat->name, "tta")) {
@@ -618,8 +656,12 @@ int avformat_open_input(AVFormatContext **ps, const char *filename,
     }
     ff_id3v2_free_extra_meta(&id3v2_extra_meta);
 
+    av_log(NULL, AV_LOG_DEBUG, "avformat_open_input_11");
+
     if ((ret = avformat_queue_attached_pictures(s)) < 0)
         goto fail;
+
+    av_log(NULL, AV_LOG_DEBUG, "avformat_open_input_12");
 
     if (!(s->flags&AVFMT_FLAG_PRIV_OPT) && s->pb && !s->internal->data_offset)
         s->internal->data_offset = avio_tell(s->pb);
@@ -636,6 +678,8 @@ int avformat_open_input(AVFormatContext **ps, const char *filename,
         *options = tmp;
     }
     *ps = s;
+
+    av_log(NULL, AV_LOG_DEBUG, "avformat_open_input_13");
     return 0;
 
 fail:
@@ -3394,6 +3438,8 @@ int avformat_find_stream_info(AVFormatContext *ic, AVDictionary **options)
 
     av_opt_set(ic, "skip_clear", "1", AV_OPT_SEARCH_CHILDREN);
 
+    av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_1");
+
     max_stream_analyze_duration = max_analyze_duration;
     max_subtitle_analyze_duration = max_analyze_duration;
     if (!max_analyze_duration) {
@@ -3405,6 +3451,8 @@ int avformat_find_stream_info(AVFormatContext *ic, AVDictionary **options)
         if (!strcmp(ic->iformat->name, "mpeg") || !strcmp(ic->iformat->name, "mpegts"))
             max_stream_analyze_duration = 7*AV_TIME_BASE;
     }
+
+    av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_2");
 
     if (ic->pb)
         av_log(ic, AV_LOG_DEBUG, "Before avformat_find_stream_info() pos: %"PRId64" bytes read:%"PRId64" seeks:%d nb_streams:%d\n",
@@ -3424,6 +3472,8 @@ int avformat_find_stream_info(AVFormatContext *ic, AVDictionary **options)
                 avctx->time_base = st->time_base;
         }
 
+        av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_3");
+
         /* check if the caller has overridden the codec id */
 #if FF_API_LAVF_AVCTX
 FF_DISABLE_DEPRECATION_WARNINGS
@@ -3435,6 +3485,8 @@ FF_DISABLE_DEPRECATION_WARNINGS
 FF_ENABLE_DEPRECATION_WARNINGS
 #endif
         // only for the split stuff
+
+        av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_4");
         if (!st->parser && !(ic->flags & AVFMT_FLAG_NOPARSE) && st->request_probe <= 0) {
             st->parser = av_parser_init(st->codecpar->codec_id);
             if (st->parser) {
@@ -3450,6 +3502,8 @@ FF_ENABLE_DEPRECATION_WARNINGS
             }
         }
 
+        av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_5");
+
         if (st->codecpar->codec_id != st->internal->orig_codec_id)
             st->internal->orig_codec_id = st->codecpar->codec_id;
 
@@ -3461,12 +3515,16 @@ FF_ENABLE_DEPRECATION_WARNINGS
 
         codec = find_probe_decoder(ic, st, st->codecpar->codec_id);
 
+        av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_6");
+
         /* Force thread count to 1 since the H.264 decoder will not extract
          * SPS and PPS to extradata during multi-threaded decoding. */
         av_dict_set(options ? &options[i] : &thread_opt, "threads", "1", 0);
 
         if (ic->codec_whitelist)
             av_dict_set(options ? &options[i] : &thread_opt, "codec_whitelist", ic->codec_whitelist, 0);
+
+        av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_7");
 
         /* Ensure that subtitle_header is properly set. */
         if (st->codecpar->codec_type == AVMEDIA_TYPE_SUBTITLE
@@ -3485,6 +3543,8 @@ FF_ENABLE_DEPRECATION_WARNINGS
         }
         if (!options)
             av_dict_free(&thread_opt);
+
+        av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_8");
     }
 
     for (i = 0; i < ic->nb_streams; i++) {
@@ -3495,6 +3555,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
         ic->streams[i]->info->fps_last_dts  = AV_NOPTS_VALUE;
     }
 
+    av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_9");
     read_size = 0;
     for (;;) {
         int analyzed_all_streams;
@@ -3504,6 +3565,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
             break;
         }
 
+        av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_10");
         /* check if one codec still needs to be handled */
         for (i = 0; i < ic->nb_streams; i++) {
             int fps_analyze_framecount = 20;
@@ -3541,6 +3603,8 @@ FF_ENABLE_DEPRECATION_WARNINGS
                  st->codecpar->codec_type == AVMEDIA_TYPE_AUDIO))
                 break;
         }
+
+        av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_11");
         analyzed_all_streams = 0;
         if (!missing_streams || !*missing_streams)
         if (i == ic->nb_streams) {
@@ -3555,6 +3619,8 @@ FF_ENABLE_DEPRECATION_WARNINGS
                 break;
             }
         }
+
+        av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_12");
         /* We did not get all the codec info, but we read too much data. */
         if (read_size >= probesize) {
             ret = count;
@@ -3571,6 +3637,7 @@ FF_ENABLE_DEPRECATION_WARNINGS
             break;
         }
 
+        av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_13");
         /* NOTE: A new stream can be added there if no header in file
          * (AVFMTCTX_NOHEADER). */
         ret = read_frame_internal(ic, &pkt1);
@@ -3591,6 +3658,8 @@ FF_ENABLE_DEPRECATION_WARNINGS
             if (ret < 0)
                 goto find_stream_info_err;
         }
+
+        av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_14");
 
         st = ic->streams[pkt->stream_index];
         if (!(st->disposition & AV_DISPOSITION_ATTACHED_PIC))
@@ -3643,6 +3712,8 @@ FF_ENABLE_DEPRECATION_WARNINGS
             st->info->fps_last_dts     = pkt->dts;
             st->info->fps_last_dts_idx = st->codec_info_nb_frames;
         }
+
+        av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_15");
         if (st->codec_info_nb_frames>1) {
             int64_t t = 0;
             int64_t limit;
@@ -3678,6 +3749,8 @@ FF_ENABLE_DEPRECATION_WARNINGS
                 st->info->codec_info_duration_fields += st->parser && st->need_parsing && avctx->ticks_per_frame ==2 ? st->parser->repeat_pict + 1 : 2;
             }
         }
+
+        av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_16");
 #if FF_API_R_FRAME_RATE
         if (st->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
             ff_rfps_add_frame(ic, st, pkt->dts);
@@ -3694,6 +3767,8 @@ FF_ENABLE_DEPRECATION_WARNINGS
                        avctx->extradata_size);
             }
         }
+
+        av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_17");
 
         /* If still no information, we try to open the codec and to
          * decompress the frame. We try to avoid that in most cases as
@@ -3713,6 +3788,8 @@ FF_ENABLE_DEPRECATION_WARNINGS
         st->codec_info_nb_frames++;
         count++;
     }
+
+    av_log(NULL, AV_LOG_DEBUG, "avformat_find_stream_info_18");
 
     if (eof_reached) {
         int stream_index;

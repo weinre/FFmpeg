@@ -30,31 +30,34 @@
 #include <signal.h>
 #include <stdint.h>
 
-#include "libavutil/avstring.h"
-#include "libavutil/eval.h"
-#include "libavutil/mathematics.h"
-#include "libavutil/pixdesc.h"
-#include "libavutil/imgutils.h"
-#include "libavutil/dict.h"
-#include "libavutil/parseutils.h"
-#include "libavutil/samplefmt.h"
-#include "libavutil/avassert.h"
-#include "libavutil/time.h"
-#include "libavformat/avformat.h"
-#include "libavdevice/avdevice.h"
-#include "libswscale/swscale.h"
-#include "libavutil/opt.h"
-#include "libavcodec/avfft.h"
-#include "libswresample/swresample.h"
+#include <libavutil/avstring.h>
+#include <libavutil/eval.h>
+#include <libavutil/mathematics.h>
+#include <libavutil/pixdesc.h>
+#include <libavutil/imgutils.h>
+#include <libavutil/dict.h>
+#include <libavutil/parseutils.h>
+#include <libavutil/samplefmt.h>
+#include <libavutil/avassert.h>
+#include <libavutil/time.h>
+#include <libavformat/avformat.h>
+#include <libavdevice/avdevice.h>
+#include <libswscale/swscale.h>
+#include <libavutil/opt.h>
+#include <libavcodec/avfft.h>
+#include <libswresample/swresample.h>
+
 
 #if CONFIG_AVFILTER
+
 # include "libavfilter/avfilter.h"
 # include "libavfilter/buffersink.h"
 # include "libavfilter/buffersrc.h"
 #endif
 
-#include <SDL.h>
-#include <SDL_thread.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_thread.h>
+
 
 #include "cmdutils.h"
 
@@ -201,6 +204,10 @@ typedef struct Decoder {
     SDL_Thread *decoder_tid;
 } Decoder;
 
+enum ShowMode {
+        SHOW_MODE_NONE = -1, SHOW_MODE_VIDEO = 0, SHOW_MODE_WAVES, SHOW_MODE_RDFT, SHOW_MODE_NB
+    } show_mode;
+
 typedef struct VideoState {
     SDL_Thread *read_tid;
     AVInputFormat *iformat;
@@ -259,9 +266,7 @@ typedef struct VideoState {
     int frame_drops_early;
     int frame_drops_late;
 
-    enum ShowMode {
-        SHOW_MODE_NONE = -1, SHOW_MODE_VIDEO = 0, SHOW_MODE_WAVES, SHOW_MODE_RDFT, SHOW_MODE_NB
-    } show_mode;
+    enum ShowMode show_mode;
     int16_t sample_array[SAMPLE_ARRAY_SIZE];
     int sample_array_index;
     int last_i_start;
@@ -337,7 +342,7 @@ static int exit_on_mousedown;
 static int loop = 1;
 static int framedrop = -1;
 static int infinite_buffer = -1;
-static enum ShowMode show_mode = SHOW_MODE_NONE;
+enum ShowMode show_mode = SHOW_MODE_NONE;
 static const char *audio_codec_name;
 static const char *subtitle_codec_name;
 static const char *video_codec_name;
@@ -365,6 +370,8 @@ static SDL_Renderer *renderer;
 #if CONFIG_AVFILTER
 static int opt_add_vfilter(void *optctx, const char *opt, const char *arg)
 {
+
+    enum ShowMode show_mode = SHOW_MODE_NONE;
     GROW_ARRAY(vfilters_list, nb_vfilters);
     vfilters_list[nb_vfilters - 1] = arg;
     return 0;
@@ -3460,10 +3467,10 @@ static int opt_duration(void *optctx, const char *opt, const char *arg)
 
 static int opt_show_mode(void *optctx, const char *opt, const char *arg)
 {
-    show_mode = !strcmp(arg, "video") ? SHOW_MODE_VIDEO :
-                !strcmp(arg, "waves") ? SHOW_MODE_WAVES :
-                !strcmp(arg, "rdft" ) ? SHOW_MODE_RDFT  :
-                parse_number_or_die(opt, arg, OPT_INT, 0, SHOW_MODE_NB-1);
+    show_mode = (enum ShowMode) (!strcmp(arg, "video") ? SHOW_MODE_VIDEO :
+                    !strcmp(arg, "waves") ? SHOW_MODE_WAVES :
+                    !strcmp(arg, "rdft" ) ? SHOW_MODE_RDFT  :
+                    (int)(parse_number_or_die(opt, arg, OPT_INT, 0, SHOW_MODE_NB-1)));
     return 0;
 }
 

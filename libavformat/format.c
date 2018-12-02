@@ -236,13 +236,17 @@ AVInputFormat *av_probe_input_format3(AVProbeData *pd, int is_opened,
         if (score > score_max) {
             score_max = score;
             fmt       = fmt1;
-        } else if (score == score_max)
+            av_log(NULL, AV_LOG_DEBUG, "av_probe_input_format3_1 fmt:%d, score_ret:%d", fmt, *score_ret);
+        } else if (score == score_max) {
             fmt = NULL;
+            av_log(NULL, AV_LOG_DEBUG, "av_probe_input_format3_2 fmt:%d, score_ret:%d", fmt, *score_ret);
+        }
     }
     if (nodat == ID3_GREATER_PROBE)
         score_max = FFMIN(AVPROBE_SCORE_EXTENSION / 2 - 1, score_max);
     *score_ret = score_max;
 
+    av_log(NULL, AV_LOG_DEBUG, "av_probe_input_format3_3 fmt:%d, score_ret:%d", fmt, *score_ret);
     return fmt;
 }
 
@@ -252,6 +256,7 @@ AVInputFormat *av_probe_input_format2(AVProbeData *pd, int is_opened, int *score
     AVInputFormat *fmt = av_probe_input_format3(pd, is_opened, &score_ret);
     if (score_ret > *score_max) {
         *score_max = score_ret;
+        av_log(NULL, AV_LOG_DEBUG, "av_probe_input_format2_1 fmt:%d, score_ret:%d", fmt, score_ret);
         return fmt;
     } else
         return NULL;
@@ -281,6 +286,7 @@ int av_probe_input_buffer2(AVIOContext *pb, AVInputFormat **fmt,
         return AVERROR(EINVAL);
     }
 
+    av_log(NULL, AV_LOG_DEBUG, "av_probe_input_buffer2_1 ret:%d", ret);
     if (offset >= max_probe_size)
         return AVERROR(EINVAL);
 
@@ -294,6 +300,8 @@ int av_probe_input_buffer2(AVIOContext *pb, AVInputFormat **fmt,
             *semi = '\0';
         }
     }
+
+    av_log(NULL, AV_LOG_DEBUG, "av_probe_input_buffer2_2 ret:%d", ret);
 #if 0
     if (!*fmt && pb->av_class && av_opt_get(pb, "mime_type", AV_OPT_SEARCH_CHILDREN, &mime_type) >= 0 && mime_type) {
         if (!av_strcasecmp(mime_type, "audio/aacp")) {
@@ -311,11 +319,15 @@ int av_probe_input_buffer2(AVIOContext *pb, AVInputFormat **fmt,
         /* Read probe data. */
         if ((ret = av_reallocp(&buf, probe_size + AVPROBE_PADDING_SIZE)) < 0)
             goto fail;
+
+        av_log(NULL, AV_LOG_DEBUG, "av_probe_input_buffer2_3 ret:%d", ret);
         if ((ret = avio_read(pb, buf + buf_offset,
                              probe_size - buf_offset)) < 0) {
             /* Fail if error was not end of file, otherwise, lower score. */
             if (ret != AVERROR_EOF)
                 goto fail;
+
+            av_log(NULL, AV_LOG_DEBUG, "av_probe_input_buffer2_4 ret:%d", ret);
 
             score = 0;
             ret   = 0;          /* error was end of file, nothing read */
@@ -330,6 +342,8 @@ int av_probe_input_buffer2(AVIOContext *pb, AVInputFormat **fmt,
 
         /* Guess file format. */
         *fmt = av_probe_input_format2(&pd, 1, &score);
+
+        av_log(NULL, AV_LOG_DEBUG, "av_probe_input_buffer2_4_1 ret:%d,fmt:%d", ret, (!*fmt));
         if (*fmt) {
             /* This can only be true in the last iteration. */
             if (score <= AVPROBE_SCORE_RETRY) {
@@ -351,6 +365,7 @@ int av_probe_input_buffer2(AVIOContext *pb, AVInputFormat **fmt,
     if (!*fmt)
         ret = AVERROR_INVALIDDATA;
 
+    av_log(NULL, AV_LOG_DEBUG, "av_probe_input_buffer2_5 ret:%d,fmt:", ret);
 fail:
     /* Rewind. Reuse probe buffer to avoid seeking. */
     ret2 = ffio_rewind_with_probe_data(pb, &buf, buf_offset);

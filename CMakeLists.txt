@@ -3245,3 +3245,23 @@ set(SOURCE_FILES
         ffserver_config.h)
 
 add_executable(FFmpeg ${SOURCE_FILES})
+
+project(ffmpegtest)
+include_directories(/usr/local/Cellar/ffmpeg/4.0.2/include /usr/local/Cellar/sdl2/2.0.8/include)
+link_directories(/usr/local/Cellar/ffmpeg/4.0.2/lib /usr/local/Cellar/sdl2/2.0.8/lib)
+
+set(SOURCE_FILES1 ffplay.c cmdutils.h cmdutils_common_opts.h cmdutils.c)
+add_executable(ffmpegtest ${SOURCE_FILES1})
+
+target_link_libraries(
+        ffmpegtest
+        avcodec
+        avdevice
+        avfilter
+        avformat
+        avresample
+        avutil
+        postproc
+        swresample
+        swscale
+)

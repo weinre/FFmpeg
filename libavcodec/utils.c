@@ -26,9 +26,9 @@
  */
 
 #include "config.h"
-#include "libavutil/atomic.h"
-#include "libavutil/attributes.h"
-#include "libavutil/avassert.h"
+#include "../libavutil/atomic.h"
+#include "../libavutil/attributes.h"
+#include "../libavutil/avassert.h"
 #include "libavutil/avstring.h"
 #include "libavutil/bprint.h"
 #include "libavutil/channel_layout.h"
@@ -3135,15 +3135,25 @@ static AVCodec *find_encdec(enum AVCodecID id, int encoder)
 {
     AVCodec *p, *experimental = NULL;
     p = first_avcodec;
+    av_log(NULL, AV_LOG_DEBUG, "find_encdec_1 first_avcodec:%p, first_avcodec_name:%s, id:%d", first_avcodec, first_avcodec->name, id);
     id= remap_deprecated_codec_id(id);
+    av_log(NULL, AV_LOG_DEBUG, "find_encdec_2 codecId:%d", id);
     while (p) {
-        if ((encoder ? av_codec_is_encoder(p) : av_codec_is_decoder(p)) &&
+        int codec_is_encoder = av_codec_is_encoder(p);
+        if ((encoder ? codec_is_encoder : av_codec_is_decoder(p)) &&
             p->id == id) {
+            av_log(NULL, AV_LOG_DEBUG, "find_encdec_3");
             if (p->capabilities & AV_CODEC_CAP_EXPERIMENTAL && !experimental) {
+                av_log(NULL, AV_LOG_DEBUG, "find_encdec_4");
                 experimental = p;
-            } else
+            } else {
+                av_log(NULL, AV_LOG_DEBUG, "find_encdec_5");
                 return p;
+            }
         }
+        av_log(NULL, AV_LOG_DEBUG,
+               "find_encdec_6 codec_name:%s, codec_id:%d, codec_is_encoder:%d, encoder:%d", p->name,
+               p->id, codec_is_encoder, encoder);
         p = p->next;
     }
     return experimental;
