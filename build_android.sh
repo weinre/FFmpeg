@@ -1,13 +1,19 @@
 #!/bin/bash
+
+# 切换到 FFmpeg 的目录
 cd /Users/whensunset/AndroidStudioProjects/KSVideoProject/ffmpeg
-# make clean
+
 # NDK的路径，根据自己的安装位置进行设置
 export NDK=/Users/whensunset/AndroidStudioProjects/KSVideoProject/android-ndk-r14b
 export SYSROOT=$NDK/platforms/android-16/arch-arm/
 export TOOLCHAIN=$NDK/toolchains/arm-linux-androideabi-4.9/prebuilt/darwin-x86_64
 export CPU=arm
+
+# 配置编译后的产物放置路径
 export PREFIX=$(pwd)/android/$CPU
 export ADDI_CFLAGS="-marm"
+
+# 创建一个方法，这个方法使用 configure 这个文件传入一些参数来对 FFmpeg 进行编译，可以使用 configure -help 命令来对参数进行了解
 function build_one
 {
 ./configure \
@@ -50,4 +56,6 @@ make clean
 make -j8
 make install
 }
+
+## 运行前面创建的编译 FFmpeg 的方法
 build_one
