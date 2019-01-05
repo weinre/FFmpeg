@@ -720,6 +720,7 @@ static void register_all(void)
 void avcodec_register_all(void)
 {
     static AVOnce control = AV_ONCE_INIT;
+    av_log(NULL, AV_LOG_DEBUG, "hello world");
 
     ff_thread_once(&control, register_all);
 }

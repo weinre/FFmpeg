@@ -37,7 +37,4 @@
 /src
 /mapfile
 .idea
-/.idea
-/cmake-build-debug
-/android
-*.log
+cmake-build-debug/

@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # 切换到 FFmpeg 的目录
 cd /Users/whensunset/AndroidStudioProjects/KSVideoProject/ffmpeg
 
@@ -8,6 +6,7 @@ export NDK=/Users/whensunset/AndroidStudioProjects/KSVideoProject/android-ndk-r1
 export SYSROOT=$NDK/platforms/android-16/arch-arm/
 export TOOLCHAIN=$NDK/toolchains/arm-linux-androideabi-4.9/prebuilt/darwin-x86_64
 export CPU=arm
+export PLATFORM=$NDK/platforms/android-14/arch-arm
 
 # 配置编译后的产物放置路径
 export PREFIX=$(pwd)/android/$CPU
@@ -17,45 +16,59 @@ export ADDI_CFLAGS="-marm"
 function build_one
 {
 ./configure \
-    --prefix=$PREFIX \
-    --target-os=linux \
-    --cross-prefix=$TOOLCHAIN/bin/arm-linux-androideabi- \
-    --arch=arm \
-    --sysroot=$SYSROOT \
-    --extra-cflags="-Os -fpic $ADDI_CFLAGS" \
-    --extra-ldflags="$ADDI_LDFLAGS" \
-    --cc=$TOOLCHAIN/bin/arm-linux-androideabi-gcc \
-    --nm=$TOOLCHAIN/bin/arm-linux-androideabi-nm \
-    --enable-shared \
-    --enable-runtime-cpudetect \
-    --enable-gpl \
-    --enable-small \
-    --enable-cross-compile \
-    --disable-debug \
-    --disable-static \
-    --disable-doc \
-    --disable-asm \
-    --disable-ffmpeg \
-    --disable-ffplay \
-    --disable-ffprobe \
-    --disable-ffserver \
-    --enable-postproc \
-    --enable-avdevice \
-    --disable-symver \
-    --disable-stripping \
+--prefix=$PREFIX \
+--target-os=android \
+--cross-prefix=$TOOLCHAIN/bin/arm-linux-androideabi- \
+--arch=arm \
+--sysroot=$PLATFORM \
+--extra-cflags="-I$PLATFORM/usr/include" \
+--cc=$TOOLCHAIN/bin/arm-linux-androideabi-gcc \
+--nm=$TOOLCHAIN/bin/arm-linux-androideabi-nm \
+--disable-shared \
+--disable-ffmpeg \
+--disable-ffplay \
+--disable-ffprobe \
+--disable-ffserver \
+--disable-doc \
+--disable-symver \
+--enable-small \
+--enable-gpl \
+--enable-asm \
+--enable-jni \
+--enable-mediacodec \
+--enable-decoder=h264_mediacodec \
+--enable-hwaccel=h264_mediacodec \
+--enable-decoder=hevc_mediacodec \
+--enable-decoder=mpeg4_mediacodec \
+--enable-decoder=vp8_mediacodec \
+--enable-decoder=vp9_mediacodec \
+--enable-nonfree \
+--enable-version3 \
+--extra-cflags="-Os -fpic $ADDI_CFLAGS" \
+--extra-ldflags="$ADDI_LDFLAGS" \
 $ADDITIONAL_CONFIGURE_FLAG
-sed -i '' 's/HAVE_LRINT 0/HAVE_LRINT 1/g' config.h
-sed -i '' 's/HAVE_LRINTF 0/HAVE_LRINTF 1/g' config.h
-sed -i '' 's/HAVE_ROUND 0/HAVE_ROUND 1/g' config.h
-sed -i '' 's/HAVE_ROUNDF 0/HAVE_ROUNDF 1/g' config.h
-sed -i '' 's/HAVE_TRUNC 0/HAVE_TRUNC 1/g' config.h
-sed -i '' 's/HAVE_TRUNCF 0/HAVE_TRUNCF 1/g' config.h
-sed -i '' 's/HAVE_CBRT 0/HAVE_CBRT 1/g' config.h
-sed -i '' 's/HAVE_RINT 0/HAVE_RINT 1/g' config.h
 make clean
 make -j8
 make install
+$TOOLCHAIN/bin/arm-linux-androideabi-ld \
+-rpath-link=$PLATFORM/usr/lib \
+-L$PLATFORM/usr/lib \
+-L$PREFIX/lib \
+-soname libffmpeg.so -shared -nostdlib -Bsymbolic --whole-archive --no-undefined -o \
+$PREFIX/libffmpeg.so \
+libavcodec/libavcodec.a \
+libavfilter/libavfilter.a \
+libswresample/libswresample.a \
+libavformat/libavformat.a \
+libavutil/libavutil.a \
+libswscale/libswscale.a \
+libavdevice/libavdevice.a \
+libpostproc/libpostproc.a \
+-lc -lm -lz -ldl -llog --dynamic-linker=/system/bin/linker \
+$TOOLCHAIN/lib/gcc/arm-linux-androideabi/4.9.x/libgcc.a
 }
 
 ## 运行前面创建的编译 FFmpeg 的方法
+OPTIMIZE_CFLAGS="-mfloat-abi=softfp -mfpu=vfp -marm -march=$CPU "
+ADDI_CFLAGS="-marm"
 build_one
